@@ -406,25 +406,20 @@ ORDER BY total_games DESC;*/
 
 
 
-WITH TN_schools AS (SELECT *
-					FROM schools
-					WHERE schoolstate = 'TN'),
-TN_players AS (SELECT DISTINCT(playerid), schoolname
-			  FROM TN_schools
+WITH TN_players AS (SELECT playerid, schoolname
+			  FROM schools
 			  LEFT JOIN collegeplaying
 			  USING(schoolid)
-			  WHERE playerid IS NOT NULL),
-TN_salaries AS (SELECT *
-				FROM TN_players
-				LEFT JOIN 
-				salaries
-				USING(playerid)),
-TN_salary_total AS (SELECT DISTINCT(playerid), schoolname, SUM(salary) OVER(PARTITION BY playerid) as total_salary
-					FROM TN_salaries
-					WHERE salary IS NOT NULL)
-SELECT DISTINCT(schoolname), COUNT(playerid) OVER (PARTITION BY schoolname) as total_players, (SUM(total_salary) OVER (PARTITION BY schoolname))::numeric::money as combined_salaries
-FROM TN_salary_total
-ORDER BY combined_salaries DESC;
+			  WHERE schoolstate = 'TN'
+			   AND playerid IS NOT NULL)
+SELECT schoolname, COUNT(DISTINCT(playerid)) as total_players, SUM(salary)::text::money as combined_salaries, SUM(salary)::text::money/COUNT(DISTINCT(playerid)) as money_per_player
+FROM TN_players
+INNER JOIN people
+USING(playerid)
+INNER JOIN salaries
+USING(playerid)
+GROUP BY schoolname
+ORDER BY money_per_player DESC;
 
 --Chira's code
 with tn_players as (select schoolid, schoolstate, schoolname
@@ -450,28 +445,50 @@ Use data from 2000 and later to answer this question. As you do this analysis,
 keep in mind that salaries across the whole league tend to increase together, 
 so you may want to look on a year-by-year basis.*/
 
-SELECT *
-FROM salaries
 
-WITH team_salaries_by_year AS (SELECT DISTINCT(teamid), yearid, (SUM(salary) OVER(PARTITION BY teamid, yearid))::numeric::money as team_salary
+WITH team_salaries_by_year AS (SELECT DISTINCT(teamid), yearid, (SUM(salary) OVER(PARTITION BY teamid, yearid)) as team_salary
 								FROM salaries
 								WHERE yearid >= 2000
 								ORDER BY teamid, yearid),
 game_wins AS (SELECT yearid, teamid, w
 					FROM teams
 					WHERE yearid >= 2000)
-SELECT corr("team_salary", "w")
-FROM (SELECT * --s.teamid, s.yearid, s.team_salary, w.w, RANK () OVER(PARTITION BY s.yearid ORDER BY w DESC)
+SELECT s.yearid, corr(team_salary, w) as sal_win_corr
 FROM team_salaries_by_year as s
 LEFT JOIN game_wins as w
-ON s.teamid = w.teamid AND s.yearid = w.yearid) as sub
-ORDER BY yearid, team_salary DESC)
+ON s.teamid = w.teamid AND s.yearid = w.yearid 
+GROUP BY s.yearid
+ORDER BY yearid
 
 /* 12.In this question, you will explore the connection between number of wins and attendance.
 Does there appear to be any correlation between attendance at home games and number of wins?
 Do teams that win the world series see a boost in attendance the following year? 
 What about teams that made the playoffs? Making the playoffs means either being a division winner 
 or a wild card winner.*/
+
+SELECT corr(homegames.attendance, w) as corr_attend_w
+FROM homegames
+INNER JOIN teams
+ON homegames.year = teams.yearid AND homegames.team = teams.teamid
+WHERE homegames.attendance IS NOT NULL 
+
+WITH wswin_teams AS (SELECT yearid, teamid, homegames.attendance
+						FROM teams
+						INNER JOIN homegames
+						ON teams.yearid = homegames.year AND teams.teamid = homegames.team
+						WHERE wswin = 'Y'),
+ws_next_season AS (SELECT wt.yearid as wswin, year, team, h2.attendance
+					FROM wswin_teams as wt
+					INNER JOIN homegames as h2
+					ON wt.yearid + 1 = h2.year AND wt.teamid = h2.team)
+SELECT *
+FROM wswin_teams
+LEFT JOIN ws_next_season
+ON wswin_teams.yearid = ws_next_season.wswin
+WHERE ws_next_season.attendance > wswin_teams.attendance
+AND wswin_teams.attendance <> 0
+
+
 
 
 /* 13. It is thought that since left-handed pitchers are more rare, causing batters to face them less often,
@@ -480,13 +497,27 @@ dispute this claim. First, determine just how rare left-handed pitchers are comp
 right-handed pitchers. Are left-handed pitchers more likely to win the Cy Young Award? 
 Are they more likely to make it into the hall of fame?*/
 
-SELECT --namelast, namefirst, throws as throwing_hand, pitching.w as wins, pitching.l as losses,
+SELECT COUNT(CASE WHEN throws = 'R' THEN 'right' END) as throws_right, 
+				COUNT(CASE WHEN throws = 'L' THEN 'left' END) as throws_left, 
+				ROUND((COUNT(CASE WHEN throws = 'L' THEN 'left' END)::numeric/COUNT(*))*100,2) as percent_left
+FROM people;
+
+SELECT COUNT(CASE WHEN throws = 'R' THEN 'right' END) as throws_right, 
+				COUNT(CASE WHEN throws = 'L' THEN 'left' END) as throws_left, 
+				ROUND((COUNT(CASE WHEN throws = 'L' THEN 'left' END)::numeric/COUNT(*))*100,2) as percent_left
+FROM people
+INNER JOIN awardsplayers
+USING(playerid)
+WHERE awardid = 'Cy Young Award';
+
+SELECT DISTINCT(people.playerid), --namelast, namefirst, throws as throwing_hand, pitching.w as wins, pitching.l as losses,
 	COUNT(CASE WHEN throws = 'R' THEN 'right handed' END) as throws_right,
 	COUNT(CASE WHEN throws = 'L' THEN 'left handed' END) as throws_left
 FROM people
 INNER JOIN pitching
 ON people.playerid = pitching.playerid
 WHERE throws IS NOT null
+GROUP BY people.playerid
 --ORDER BY w DESC
 LIMIT 10;
 		
@@ -499,6 +530,9 @@ WHERE throws IS NOT null
 
 SELECT *
 FROM people
+
+
+
 
 
 --MAHESH OPEN ENDED ANSWERS
@@ -518,8 +552,12 @@ FROM tn_schools INNER JOIN collegeplaying USING(schoolid)
 	 INNER JOIN salaries USING(playerid)
 GROUP BY schoolname
 ORDER BY money_per_player DESC;
-​
-​
+
+
+SELECT *
+FROM teams
+WHERE teamid = 'ANA'
+AND yearid = '2000'
 -- Is there any correlation between number of wins and team salary?
 -- Use data from 2000 and later to answer this question.
 -- As you do this analysis, keep in mind that salaries across the whole league tend to increase together, so you may want to look on a year-by-year basis.
