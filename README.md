@@ -2,7 +2,10 @@
 - this data has been made available [online](http://www.seanlahman.com/baseball-archive/statistics/) by Sean Lahman
 - you can find a data dictionary [here](http://www.seanlahman.com/files/database/readme2016.txt)
 
-Used a dataset of 27 tables created by Sean Lahman and PostgreSQL to analyze baseball statistics, which required the use of joins, case statements, window functions, and common table expressions. As team leader for this project, I created a Kanban Board on GitHub to manage our analysis. We each chose two questions to work on initially and helped each other along the way. I went back and completed all of the questions on my own afterwards. I later used this dataset to create a data story about the career of baseball executive, Bill Veeck, for a class presentation using Tableau. [Tableau Profile](https://public.tableau.com/views/Baseball_Executive_Bill_Veeck_Story/BillVeeck?:language=en&:display_count=y&:origin=viz_share_link)
+Used a dataset of 27 tables created by Sean Lahman and PostgreSQL to analyze baseball statistics, which required the use of joins, case statements, window functions, and common table expressions. As team leader for this project, I created a Kanban Board on GitHub to manage our analysis. We each chose two questions to work on initially and helped each other along the way. I went back and completed all of the questions on my own afterwards. We also learned how to connect to this database and revisited some of these questions in Python. 
+
+#### Tableau Presentation
+I later used this dataset to create a data story about the career of baseball executive, Bill Veeck, for a class presentation using Tableau. [Tableau Profile](https://public.tableau.com/views/Baseball_Executive_Bill_Veeck_Story/BillVeeck?:language=en&:display_count=y&:origin=viz_share_link)
 
 #### Use SQL queries to find answers to the Initial Questions. If time permits, choose one (or more) of the Open-Ended Questions.
 
